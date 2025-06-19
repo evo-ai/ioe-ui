@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Grid2 from '@mui/material/Unstable_Grid2';
+import Grid from '@mui/material/Grid';
 import {
   Box,
   Button,
@@ -104,9 +104,9 @@ const CareGaps: React.FC<CareGapsProps> = ({ onPrevious, onNext }) => {
       <Typography variant="body2" color="text.secondary" gutterBottom>
         Select the care gaps you want to address in this campaign.
       </Typography>
-      <Grid2 container spacing={3}>
+      <Grid container spacing={3}>
         {careGapCategories.map((cat) => (
-          <Grid2 xs={12} md={4} key={cat.label}>
+          <Grid xs={12} md={4} key={cat.label}>
             <FormControl component="fieldset" fullWidth>
               <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>{cat.label}</Typography>
               <FormGroup>
@@ -124,9 +124,9 @@ const CareGaps: React.FC<CareGapsProps> = ({ onPrevious, onNext }) => {
                 ))}
               </FormGroup>
             </FormControl>
-          </Grid2>
+          </Grid>
         ))}
-      </Grid2>
+      </Grid>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
         <Button variant="outlined" onClick={onPrevious}>
           Previous
