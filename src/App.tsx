@@ -1,10 +1,18 @@
+import { useState } from 'react';
 import { Stepper, Step, StepLabel } from '@mui/material';
+import CampaignInfo from './CampaignInfo';
+import CareGaps from './CareGaps';
 
 function App() {
+  const [activeStep, setActiveStep] = useState(0);
+
+  const handleNext = () => setActiveStep((prev) => prev + 1);
+  const handleBack = () => setActiveStep((prev) => prev - 1);
+
   return (
     <div>
-      <h1>Welcome to IOE-UI Campaign Wizard!</h1>
-      <Stepper activeStep={0} alternativeLabel>
+      <h2 style={{ fontWeight: 700, marginTop: 24, marginBottom: 24 }}>Create New Campaign</h2>
+      <Stepper activeStep={activeStep} alternativeLabel>
         <Step>
           <StepLabel>Campaign Info</StepLabel>
         </Step>
@@ -15,6 +23,9 @@ function App() {
           <StepLabel>Review</StepLabel>
         </Step>
       </Stepper>
+      {activeStep === 0 && <CampaignInfo onNext={handleNext} />}
+      {activeStep === 1 && <CareGaps onPrevious={handleBack} onNext={handleNext} />}
+      {/* Add more steps as needed */}
     </div>
   );
 }
