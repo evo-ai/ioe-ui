@@ -106,7 +106,7 @@ const CareGaps: React.FC<CareGapsProps> = ({ onPrevious, onNext }) => {
       </Typography>
       <Grid container spacing={3}>
         {careGapCategories.map((cat) => (
-          <Grid xs={12} md={4} key={cat.label}>
+          <Grid item xs={12} md={4} key={cat.label}>
             <FormControl component="fieldset" fullWidth>
               <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>{cat.label}</Typography>
               <FormGroup>
