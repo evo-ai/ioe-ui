@@ -1,46 +1,70 @@
-# Getting Started with Create React App
+# IOE-UI and Backend API
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This project contains a React frontend (`ioe-ui`) and an ASP.NET Core backend (`ioe-api`) that work together to securely browse and preview files from an Azure Blob Storage container.
 
-## Available Scripts
+## Local Development Setup
 
-In the project directory, you can run:
+To run this project locally, you need to run both the frontend and backend servers simultaneously.
 
-### `npm start`
+### Prerequisites
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- [Node.js and npm](https://nodejs.org/en/)
+- An Azure Storage Account with a configured container and files.
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+---
 
-### `npm test`
+### 1. Configure and Run the Backend API
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+The backend API is responsible for securely connecting to Azure Storage. It requires a connection string to be set as an environment variable for local testing.
 
-### `npm run build`
+1.  **Open a terminal** in the project's root directory.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+2.  **Set the Azure Storage Connection String:**
+    Export the connection string as an environment variable. This command is for the current terminal session only and is not stored in your git history.
+    
+    ```bash
+    export ConnectionStrings__StorageAccount="<YOUR_AZURE_STORAGE_CONNECTION_STRING>"
+    ```
+    *Replace `<YOUR_AZURE_STORAGE_CONNECTION_STRING>` with your actual key.*
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+3.  **Navigate to the API directory and run the server:**
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+    ```bash
+    cd ioe-api
+    dotnet run
+    ```
 
-### `npm run eject`
+4.  The API will start and listen on a local port (e.g., `http://localhost:5192`). Keep this terminal window open.
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+---
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### 2. Configure and Run the Frontend Application
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+The React frontend communicates with the backend via a proxy configured in `package.json`.
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+1.  **Open a new, separate terminal** in the project's root directory.
 
-## Learn More
+2.  **Navigate to the frontend directory and install dependencies:**
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+    ```bash
+    cd ioe-ui 
+    npm install
+    ```
+    *(If you are running this for the first time or have new packages)*
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+3.  **Start the React development server:**
+
+    ```bash
+    npm start
+    ```
+
+4.  Your default browser should open to `http://localhost:3000`. The application will now be running and connected to your local backend API.
+
+---
+
+## Testing the Application
+
+- Navigate to the "Campaign Identification" page in the browser.
+- The **"Available Files"** dropdown should populate with a list of files from your Azure Storage `landing/` directory.
+- Selecting a file should display a preview of its contents in a table below.
