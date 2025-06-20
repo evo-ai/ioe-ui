@@ -7,7 +7,6 @@
     "@emotion/styled": "^11.14.0",
     "@mui/material": "^7.1.1",
     "@mui/system": "^7.1.1",
-    "@mui/types": "^7.4.3",
     "@reduxjs/toolkit": "^2.8.2",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
@@ -27,7 +26,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "test": "react-scripts test",
+    "test": "jest --json --outputFile=test-output.json",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
@@ -49,7 +48,12 @@
     ]
   },
   "devDependencies": {
+    "@babel/core": "^7.27.4",
+    "@babel/preset-env": "^7.27.2",
+    "@babel/preset-react": "^7.27.1",
+    "@babel/preset-typescript": "^7.27.1",
     "@types/react": "^19.1.8",
+    "babel-jest": "^30.0.2",
     "typescript": "^4.9.5"
   }
 }
