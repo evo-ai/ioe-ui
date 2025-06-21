@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import Grid from '@mui/material/Grid';
 import {
   Box,
   Button,
@@ -104,9 +103,9 @@ const CareGaps: React.FC<CareGapsProps> = ({ onPrevious, onNext }) => {
       <Typography variant="body2" color="text.secondary" gutterBottom>
         Select the care gaps you want to address in this campaign.
       </Typography>
-      <Grid container spacing={3}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
         {careGapCategories.map((cat) => (
-          <Grid item xs={12} md={4} key={cat.label}>
+          <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 calc(33.333% - 16px)' } }} key={cat.label}>
             <FormControl component="fieldset" fullWidth>
               <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>{cat.label}</Typography>
               <FormGroup>
@@ -124,9 +123,9 @@ const CareGaps: React.FC<CareGapsProps> = ({ onPrevious, onNext }) => {
                 ))}
               </FormGroup>
             </FormControl>
-          </Grid>
+                      </Box>
         ))}
-      </Grid>
+      </Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
         <Button variant="outlined" onClick={onPrevious}>
           Previous
@@ -139,4 +138,4 @@ const CareGaps: React.FC<CareGapsProps> = ({ onPrevious, onNext }) => {
   );
 };
 
-export default CareGaps; 
+export default CareGaps;

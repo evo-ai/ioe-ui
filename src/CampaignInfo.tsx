@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Box, Button, TextField, Typography, Paper } from '@mui/material';
+import AudienceSelector from './AudienceSelector';
 
 interface CampaignInfoProps {
   onNext?: () => void;
@@ -8,8 +9,7 @@ interface CampaignInfoProps {
 const CampaignInfo: React.FC<CampaignInfoProps> = ({ onNext }) => {
   const [campaignName, setCampaignName] = useState('');
   const [description, setDescription] = useState('');
-  const [file, setFile] = useState<File | null>(null);
-  const [fileError, setFileError] = useState('');
+  const [selectedAudienceFile, setSelectedAudienceFile] = useState<string | null>(null);
   const [nameError, setNameError] = useState(false);
   const [descError, setDescError] = useState(false);
 
@@ -27,23 +27,16 @@ const CampaignInfo: React.FC<CampaignInfoProps> = ({ onNext }) => {
       return;
     }
     setDescError(false);
+
+    // Validate Audience File
+    if (!selectedAudienceFile) {
+      alert('Please select an audience file.');
+      return;
+    }
   
     // Log form data (for testing)
-    console.log('Form submitted:', { campaignName, description, file });
+    console.log('Form submitted:', { campaignName, description, file: selectedAudienceFile });
     if (onNext) onNext();
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const selectedFile = e.target.files[0];
-      if (selectedFile.type !== 'text/csv') {
-        setFileError('Please upload a CSV file.');
-        setFile(null);
-      } else {
-        setFile(selectedFile);
-        setFileError('');
-      }
-    }
   };
 
   return (
@@ -82,29 +75,7 @@ const CampaignInfo: React.FC<CampaignInfoProps> = ({ onNext }) => {
           helperText={descError ? 'Description cannot be empty if provided' : ''}
           fullWidth
         />
-        <Box>
-          <Typography variant="subtitle2" gutterBottom>
-            Target Audience (CSV Upload)
-          </Typography>
-          <Button
-            variant="outlined"
-            component="label"
-            sx={{ mb: 1 }}
-          >
-            Upload a file
-            <input
-              type="file"
-              accept=".csv"
-              hidden
-              onChange={handleFileChange}
-            />
-          </Button>
-          {file && <Typography variant="body2">Selected file: {file.name}</Typography>}
-          {fileError && <Typography color="error" variant="body2">{fileError}</Typography>}
-          <Typography variant="caption" color="text.secondary">
-            CSV file with patient data
-          </Typography>
-        </Box>
+        <AudienceSelector onFileSelect={setSelectedAudienceFile} />
       </Box>
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
         <Button variant="outlined" sx={{ mr: 2 }}>

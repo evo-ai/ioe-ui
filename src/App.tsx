@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Stepper, Step, StepLabel } from '@mui/material';
 import CampaignInfo from './CampaignInfo';
 import CareGaps from './CareGaps';
+import React from 'react';
+
 
 function App() {
   const [activeStep, setActiveStep] = useState(0);

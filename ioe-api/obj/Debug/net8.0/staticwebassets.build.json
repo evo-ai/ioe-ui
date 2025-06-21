@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "Hash": "h0+PuojFVUQMlETH3HBIrQYZ0Ci0RuHCO0rPShyc61o=",
+  "Source": "ioe-api",
+  "BasePath": "_content/ioe-api",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": []
+}
