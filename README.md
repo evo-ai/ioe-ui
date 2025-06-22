@@ -10,13 +10,16 @@ The application is a multi-step campaign creation wizard designed for Medical Gu
 - Select target audiences from pre-ingested CSV files stored in different Azure Blob Storage containers.
 - View an **instant validation summary** of the selected file, including member count and mandatory header checks.
 - Preview audience data in a paginated, user-friendly table.
-- Configure care gap interventions for the campaign.
-- Navigate through a structured workflow using a custom-themed Material-UI stepper.
+- Configure care gap interventions using an intuitive **Command Center** interface.
+- Navigate through a structured workflow with persistent state management across all steps.
 
 ## 🎨 UI/UX Enhancements
 The user interface has been significantly enhanced to provide a clear, intuitive, and branded experience.
 
 - **Medical Guardian Theme**: A custom MUI theme (`src/theme.ts`) has been implemented using the brand's primary (deep purple `#4a246d`) and secondary (vibrant pink `#e5358a`) colors.
+- **Global State Management**: React Context API with useReducer pattern for managing campaign creation state across all wizard steps.
+- **Command Center UI**: The CareGaps component has been redesigned as a "Command Center" with a three-column layout and collapsible accordions for each intervention category.
+- **Persistent Navigation**: Centralized navigation controls in a persistent footer that maintains state across step transitions.
 - **Improved Layout**: Forms are structured into logical sections using `<Paper>` and `<Typography>` for clear visual hierarchy.
 - **Enriched File Selector**: The audience file dropdown now displays the file's name and last modified date, helping users select the correct version.
 - **Proactive Validation**: An instant **Validation Summary** card appears upon file selection, providing immediate feedback on data quality.
@@ -30,7 +33,7 @@ The user interface has been significantly enhanced to provide a clear, intuitive
 - **UI Library**: Material-UI (MUI) v7.1.1 with Emotion
 - **Icons**: `@mui/icons-material` for integrated iconography
 - **Theming**: Custom MUI theme for brand alignment
-- **State Management**: React Hooks (useState, useEffect)
+- **State Management**: React Context API with useReducer for global state
 - **Form Handling**: Controlled components with real-time validation
 - **HTTP Client**: Native `fetch` API
 - **Testing**: Jest with React Testing Library
@@ -51,10 +54,12 @@ ioe-ui/
 │   └── Controllers/
 │       └── AudiencesController.cs  # API endpoints for file operations
 ├── 📁 src/                        # React Frontend Source
-│   ├── App.tsx                   # Main application component with ThemeProvider
+│   ├── App.tsx                   # Main application component with ThemeProvider and CampaignProvider
 │   ├── CampaignInfo.tsx          # Step 1: Campaign Information & Audience
-│   ├── CareGaps.tsx              # Step 2: Care Gap Selection
+│   ├── CareGaps.tsx              # Step 2: Command Center for Care Gap Selection
 │   ├── AudienceSelector.tsx      # Advanced file selection & validation component
+│   ├── contexts/
+│   │   └── CampaignContext.tsx   # Global state management with Context + useReducer
 │   ├── theme.ts                  # Custom MUI theme file
 │   └── index.tsx                 # Application entry point
 ├── package.json                   # Frontend dependencies and scripts
@@ -70,6 +75,11 @@ ioe-ui/
 - **Error Handling**: Gracefully handles requests for non-existent containers or files.
 
 ### Frontend Application (`ioe-ui`)
+- **Global State Management**: 
+  - CampaignContext with useReducer for managing wizard state
+  - Persistent state across navigation steps
+  - "Save as Draft" functionality with validation
+  - Centralized navigation controls in persistent footer
 - **Themed Stepper**: A multi-step workflow (Campaign Info → Care Gaps → Review) styled with brand colors.
 - **Campaign Information Form**: 
   - **Care-flow Stream**: Dropdown to select the data source.
@@ -82,7 +92,11 @@ ioe-ui/
     - ✅⚠️ Validates the presence of the strictly required `salesforce_account_number` header.
   - **Paginated Preview Table**: Allows easy inspection of large audience files.
   - **Skeleton Loading State**: Provides a better user experience while fetching data.
-- **Care Gap Configuration**: Checkbox-based selection interface for configuring campaign interventions.
+- **Command Center UI for Care Gaps**: 
+  - Three-column layout with collapsible accordions
+  - Organized intervention categories (Preventive Care, Chronic Disease Management, etc.)
+  - Visual hierarchy with cards and sections
+  - Intuitive selection interface with clear categorization
 
 ## 🔧 Local Development Setup
 
@@ -175,11 +189,15 @@ The React frontend communicates with the backend via a proxy configured in `pack
 - [x] Multi-step campaign creation workflow
 - [x] Campaign information form with validation
 - [x] Audience file selection with preview
-- [x] Care gap configuration interface
+- [x] Care gap configuration interface with Command Center UI
 - [x] Material-UI responsive design
 - [x] TypeScript type safety
 - [x] Error handling and loading states
 - [x] Development proxy configuration
+- [x] Global state management with React Context
+- [x] Persistent navigation and state across wizard steps
+- [x] Custom MUI theme with brand colors
+- [x] Advanced file validation and preview features
 
 ### 🚧 In Progress / Planned Features
 - [ ] Review step implementation
@@ -190,6 +208,7 @@ The React frontend communicates with the backend via a proxy configured in `pack
 - [ ] Export functionality
 - [ ] Unit and integration tests
 - [ ] Production deployment configuration
+- [ ] Database-backed draft persistence (Phase 2)
 
 ## 🤝 Contributing
 
