@@ -1,36 +1,83 @@
 import { useState } from 'react';
-import { Stepper, Step, StepLabel, ThemeProvider } from '@mui/material';
+import { Stepper, Step, StepLabel, ThemeProvider, Box, Button, Paper } from '@mui/material';
 import CampaignInfo from './CampaignInfo';
 import CareGaps from './CareGaps';
 import React from 'react';
 import theme from './theme';
+import { CampaignProvider, useCampaignContext } from './contexts/CampaignContext';
 
-
-function App() {
+const AppContent: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
+  const { state } = useCampaignContext();
 
-  const handleNext = () => setActiveStep((prev) => prev + 1);
+  const handleNext = () => {
+    if (activeStep === 0) {
+      // Validation for Step 1 before proceeding
+      const { careFlowStream, campaignName, selectedAudienceFile } = state;
+      if (!careFlowStream || !campaignName.trim() || !selectedAudienceFile) {
+        alert('Please complete all fields in Step 1 before proceeding.');
+        return;
+      }
+    }
+    setActiveStep((prev) => prev + 1);
+  };
+
   const handleBack = () => setActiveStep((prev) => prev - 1);
+  
+  const handleSaveAsDraft = () => {
+    const { careFlowStream, campaignName, selectedAudienceFile } = state;
+    if (!careFlowStream || !campaignName.trim() || !selectedAudienceFile) {
+      alert('To save a draft, please complete all fields in Step 1: Care-flow Stream, Campaign Name, and select a Target Audience file.');
+      return;
+    }
+    console.log('Draft Saved:', state);
+    alert('Campaign draft has been saved to the console!');
+  };
+  
+  const steps = ['Campaign Info', 'Care Gaps', 'Review'];
 
   return (
-    <ThemeProvider theme={theme}>
-      <div>
-        <h2 style={{ fontWeight: 700, marginTop: 24, marginBottom: 24 }}>Create New Campaign</h2>
-        <Stepper activeStep={activeStep} alternativeLabel>
-          <Step>
-            <StepLabel>Campaign Info</StepLabel>
+    <div>
+      <h2 style={{ fontWeight: 700, marginTop: 24, marginBottom: 24 }}>Create New Campaign</h2>
+      <Stepper activeStep={activeStep} alternativeLabel>
+        {steps.map(label => (
+          <Step key={label}>
+            <StepLabel>{label}</StepLabel>
           </Step>
-          <Step>
-            <StepLabel>Care Gaps</StepLabel>
-          </Step>
-          <Step>
-            <StepLabel>Review</StepLabel>
-          </Step>
-        </Stepper>
-        {activeStep === 0 && <CampaignInfo onNext={handleNext} />}
-        {activeStep === 1 && <CareGaps onPrevious={handleBack} onNext={handleNext} />}
+        ))}
+      </Stepper>
+      
+      <Box sx={{ mt: 4, mb: 4 }}>
+        {activeStep === 0 && <CampaignInfo />}
+        {activeStep === 1 && <CareGaps />}
         {/* Add more steps as needed */}
-      </div>
+      </Box>
+
+      <Paper sx={{ position: 'sticky', bottom: 0, p: 2, borderTop: '1px solid #e0e0e0' }} elevation={3}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+          <Button variant="outlined" onClick={handleSaveAsDraft}>
+            Save as Draft
+          </Button>
+          <Box>
+            <Button disabled={activeStep === 0} onClick={handleBack} sx={{ mr: 2 }}>
+              Previous
+            </Button>
+            <Button variant="contained" onClick={handleNext}>
+              {activeStep === steps.length - 1 ? 'Finish' : 'Next'}
+            </Button>
+          </Box>
+        </Box>
+      </Paper>
+    </div>
+  );
+};
+
+function App() {
+  return (
+    <ThemeProvider theme={theme}>
+      <CampaignProvider>
+        <AppContent />
+      </CampaignProvider>
     </ThemeProvider>
   );
 }

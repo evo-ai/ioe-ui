@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ioe-api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7e2ef78606484e93e1dcf9ac08af0c6b45a2cec7")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4cb8c86f8025dffccceb05a2c398c68a7875c99b")]
 [assembly: System.Reflection.AssemblyProductAttribute("ioe-api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ioe-api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -4,7 +4,7 @@ This project contains a React frontend (`ioe-ui`) and an ASP.NET Core backend (`
 
 ## 🏗️ Project Overview
 
-The application is a multi-step campaign creation wizard designed for healthcare organizations. It allows users to:
+The application is a multi-step campaign creation wizard designed for Medical Guardians Intelligent Orchestration Engine -IOE. It allows users to:
 - Create new healthcare campaigns with detailed information.
 - Select a **Care-flow Stream** (`Healthcare Partner` or `DTC`) which determines the data source.
 - Select target audiences from pre-ingested CSV files stored in different Azure Blob Storage containers.

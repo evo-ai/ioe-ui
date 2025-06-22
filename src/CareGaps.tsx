@@ -1,19 +1,17 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Box,
-  Button,
   Typography,
-  Paper,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
   FormControl,
   FormGroup,
   FormControlLabel,
-  Checkbox
+  Checkbox,
 } from '@mui/material';
-
-interface CareGapsProps {
-  onPrevious: () => void;
-  onNext: () => void;
-}
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { useCampaignContext } from './contexts/CampaignContext';
 
 const careGapCategories = [
   {
@@ -67,74 +65,124 @@ const careGapCategories = [
   },
 ];
 
-const CareGaps: React.FC<CareGapsProps> = ({ onPrevious, onNext }) => {
-  const [selected, setSelected] = useState<{ [category: string]: string[] }>({});
+const careGapColumns = [
+  [careGapCategories[0], careGapCategories[3]], // Col 1
+  [careGapCategories[1], careGapCategories[4]], // Col 2
+  [careGapCategories[2], careGapCategories[5]], // Col 3
+];
 
-  const handleCheckboxChange = (category: string, option: string) => (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    setSelected((prev) => {
-      const prevOptions = prev[category] || [];
-      if (event.target.checked) {
-        return {
-          ...prev,
-          [category]: [...prevOptions, option],
-        };
-      } else {
-        return {
-          ...prev,
-          [category]: prevOptions.filter((item) => item !== option),
-        };
-      }
-    });
+const CareGaps: React.FC = () => {
+  const { state, dispatch } = useCampaignContext();
+  const { careGaps: selected } = state;
+  const allCategoryLabels = careGapCategories.map(cat => cat.label);
+  const [expanded, setExpanded] = React.useState<string[]>(allCategoryLabels);
+
+  const handleAccordionChange = (panel: string) => (event: React.SyntheticEvent, isExpanded: boolean) => {
+    setExpanded(current => isExpanded ? [...current, panel] : current.filter(p => p !== panel));
+  };
+  
+  const updateCareGaps = (newCareGaps: typeof selected) => {
+    dispatch({ type: 'UPDATE_FIELD', payload: { field: 'careGaps', value: newCareGaps } });
   };
 
-  const handleNext = () => {
-    // Log selections for testing
-    console.log('Selected care gaps:', selected);
-    onNext();
+  const handleCategoryChange = (categoryLabel: string, options: string[]) => (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newSelected = { ...selected };
+    if (event.target.checked) {
+      newSelected[categoryLabel] = options;
+    } else {
+      delete newSelected[categoryLabel];
+    }
+    updateCareGaps(newSelected);
+  };
+  
+  const handleOptionChange = (categoryLabel: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
+    const option = event.target.name;
+    const newSelected = { ...selected };
+    const categoryOptions = newSelected[categoryLabel] || [];
+
+    if (event.target.checked) {
+      newSelected[categoryLabel] = [...categoryOptions, option];
+    } else {
+      newSelected[categoryLabel] = categoryOptions.filter((item) => item !== option);
+    }
+    
+    if (newSelected[categoryLabel].length === 0) {
+      delete newSelected[categoryLabel];
+    }
+    updateCareGaps(newSelected);
   };
 
   return (
-    <Paper elevation={3} sx={{ p: 4, maxWidth: 1200, margin: '32px auto' }}>
-      <Typography variant="h6" gutterBottom>
+    <Box>
+      <Typography variant="h5" component="h2" gutterBottom>
         Care Gap Selection
       </Typography>
-      <Typography variant="body2" color="text.secondary" gutterBottom>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
         Select the care gaps you want to address in this campaign.
       </Typography>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-        {careGapCategories.map((cat) => (
-          <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 calc(33.333% - 16px)' } }} key={cat.label}>
-            <FormControl component="fieldset" fullWidth>
-              <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>{cat.label}</Typography>
-              <FormGroup>
-                {cat.options.map((option) => (
-                  <FormControlLabel
-                    key={option}
-                    control={
-                      <Checkbox
-                        checked={selected[cat.label]?.includes(option) || false}
-                        onChange={handleCheckboxChange(cat.label, option)}
-                      />
-                    }
-                    label={option}
-                  />
-                ))}
-              </FormGroup>
-            </FormControl>
-                      </Box>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+        {careGapColumns.map((column, colIndex) => (
+          <Box 
+            key={colIndex}
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 1,
+              width: { xs: '100%', md: 'calc(33.333% - 11px)' },
+              flexGrow: 1,
+            }}
+          >
+            {column.map((cat) => {
+              const selectedInCategory = selected[cat.label] || [];
+              const allSelected = selectedInCategory.length === cat.options.length;
+              const someSelected = selectedInCategory.length > 0 && !allSelected;
+              
+              return (
+                <Accordion 
+                  key={cat.label} 
+                  expanded={expanded.includes(cat.label)}
+                  onChange={handleAccordionChange(cat.label)}
+                >
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <FormControlLabel
+                      label={<b>{cat.label}</b>}
+                      control={
+                        <Checkbox
+                          checked={allSelected}
+                          indeterminate={someSelected}
+                          onChange={handleCategoryChange(cat.label, cat.options)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      }
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </AccordionSummary>
+                  <AccordionDetails sx={{ pt: 0 }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', ml: 3 }}>
+                      <FormGroup>
+                        {cat.options.map((option) => (
+                          <FormControlLabel
+                            key={option}
+                            label={option}
+                            control={
+                              <Checkbox
+                                checked={selectedInCategory.includes(option)}
+                                onChange={handleOptionChange(cat.label)}
+                                name={option}
+                              />
+                            }
+                          />
+                        ))}
+                      </FormGroup>
+                    </Box>
+                  </AccordionDetails>
+                </Accordion>
+              );
+            })}
+          </Box>
         ))}
       </Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
-        <Button variant="outlined" onClick={onPrevious}>
-          Previous
-        </Button>
-        <Button variant="contained" onClick={handleNext}>
-          Next Step
-        </Button>
-      </Box>
-    </Paper>
+    </Box>
   );
 };
 

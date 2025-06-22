@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Select, MenuItem, FormControl, InputLabel, CircularProgress, Box, 
   Typography, Table, TableBody, TableCell, TableContainer, TableHead, 
@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningIcon from '@mui/icons-material/Warning';
+import { useCampaignContext } from './contexts/CampaignContext';
 
 // Using `any` is simple for dynamic data, but for production, you might define a more specific type.
 type DataRecord = Record<string, any>;
@@ -21,15 +22,11 @@ interface ValidationSummary {
   hasMandatoryHeaders: boolean;
 }
 
-interface AudienceSelectorProps {
-  onFileSelect: (fileName: string | null) => void;
-  onPartnerNameFound: (partnerName: string | null) => void;
-  careFlowStream: string;
-}
+const AudienceSelector: React.FC = () => {
+  const { state, dispatch } = useCampaignContext();
+  const { careFlowStream, selectedAudienceFile } = state;
 
-const AudienceSelector: React.FC<AudienceSelectorProps> = ({ onFileSelect, onPartnerNameFound, careFlowStream }) => {
   const [fileList, setFileList] = useState<FileMetadata[]>([]);
-  const [selectedFile, setSelectedFile] = useState<string>('');
   const [previewData, setPreviewData] = useState<DataRecord[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,70 +34,72 @@ const AudienceSelector: React.FC<AudienceSelectorProps> = ({ onFileSelect, onPar
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
 
-  // 1. Fetch the list of files from our backend API when the component first loads.
-  useEffect(() => {
-    const fetchFileList = async () => {
-      if (!careFlowStream) {
-        setFileList([]);
-        onPartnerNameFound(null); // Clear partner name when stream is cleared
-        return;
-      }
-      setError(null);
-      try {
-        const response = await fetch(`/api/audiences/available-files?streamType=${encodeURIComponent(careFlowStream)}`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch file list from server.');
-        }
-        const data: FileMetadata[] = await response.json();
-        setFileList(data);
-      } catch (err: any) {
-        setError(err.message);
-      }
-    };
-
-    fetchFileList();
-  }, [careFlowStream, onPartnerNameFound]); // The effect now depends on careFlowStream
-
-  // 2. Handle the user selecting a file from the dropdown.
-  const handleFileSelectChange = async (event: SelectChangeEvent<string>) => {
-    const fileName = event.target.value as string;
-    setSelectedFile(fileName);
-    onFileSelect(fileName || null); // Notify parent component
-    setPreviewData([]); // Clear any previous preview
-    onPartnerNameFound(null); // Reset partner name on new file selection
-    setValidationSummary(null);
-    setPage(0); // Reset page on new file selection
-
-    if (!fileName) {
-      return; // Stop if the user selected the "-- Please choose --" option
+  const fetchAndProcessFile = useCallback(async (fileName: string | null) => {
+    if (!careFlowStream || !fileName) {
+      setPreviewData([]);
+      setValidationSummary(null);
+      dispatch({ type: 'UPDATE_FIELD', payload: { field: 'partnerName', value: null } });
+      return;
     }
 
     setIsLoading(true);
     setError(null);
+    setValidationSummary(null);
+    setPage(0);
+
     try {
-      // 3. Fetch the preview content for the selected file from our backend API.
       const response = await fetch(`/api/audiences/file-preview?fileName=${encodeURIComponent(fileName)}&streamType=${encodeURIComponent(careFlowStream)}`);
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || `Failed to fetch preview for ${fileName}.`);
+        throw new Error(await response.text() || `Failed to fetch preview for ${fileName}.`);
       }
       const data: DataRecord[] = await response.json();
       setPreviewData(data);
 
       if (data.length > 0) {
-        if (data[0].partner_name) onPartnerNameFound(data[0].partner_name);
-        
+        dispatch({ type: 'UPDATE_FIELD', payload: { field: 'partnerName', value: data[0].partner_name || null } });
         const headers = Object.keys(data[0]);
         setValidationSummary({
           membersFound: data.length,
-          hasMandatoryHeaders: headers.includes('salesforce_account_number'),
+          hasMandatoryHeaders: headers.some(header => header.startsWith('salesforce_account_number')),
         });
       }
     } catch (err: any) {
       setError(err.message);
+      setPreviewData([]); // Clear data on error
     } finally {
       setIsLoading(false);
     }
+  }, [careFlowStream, dispatch]);
+
+  useEffect(() => {
+    const fetchFileList = async () => {
+      if (!careFlowStream) {
+        setFileList([]);
+        return;
+      }
+      try {
+        const response = await fetch(`/api/audiences/available-files?streamType=${encodeURIComponent(careFlowStream)}`);
+        if (!response.ok) throw new Error('Failed to fetch file list from server.');
+        setFileList(await response.json());
+      } catch (err: any) {
+        setError(err.message);
+      }
+    };
+    fetchFileList();
+  }, [careFlowStream]);
+
+  useEffect(() => {
+    if (selectedAudienceFile) {
+      fetchAndProcessFile(selectedAudienceFile);
+    } else {
+      setPreviewData([]);
+      setValidationSummary(null);
+    }
+  }, [selectedAudienceFile, fetchAndProcessFile]);
+  
+  const handleFileSelectChange = (event: SelectChangeEvent<string>) => {
+    const fileName = event.target.value as string;
+    dispatch({ type: 'UPDATE_FIELD', payload: { field: 'selectedAudienceFile', value: fileName || null } });
   };
   
   const handleChangePage = (event: unknown, newPage: number) => setPage(newPage);
@@ -168,7 +167,7 @@ const AudienceSelector: React.FC<AudienceSelectorProps> = ({ onFileSelect, onPar
             <Select
               labelId="file-select-label"
               id="file-select"
-              value={selectedFile}
+              value={selectedAudienceFile || ''}
               label="Available Files"
               onChange={handleFileSelectChange}
             >
@@ -215,7 +214,7 @@ const AudienceSelector: React.FC<AudienceSelectorProps> = ({ onFileSelect, onPar
         </Box>
       ) : paginatedData.length > 0 && (
         <Box sx={{ mt: 4 }}>
-          <Typography variant="h6" gutterBottom>File Preview: {selectedFile}</Typography>
+          <Typography variant="h6" gutterBottom>File Preview: {selectedAudienceFile}</Typography>
           <PreviewTable data={paginatedData} />
         </Box>
       )}
