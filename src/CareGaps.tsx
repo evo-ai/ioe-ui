@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -8,11 +8,12 @@ import {
   Checkbox,
   FormControlLabel,
   styled,
+  Alert,
 } from '@mui/material';
-import { useCampaignContext } from './contexts/CampaignContext';
+import { useCampaignContext, CareGap } from './contexts/CampaignContext';
 
 // Styled components for enhanced visual design
-const CategoryCard = styled(Paper)<{ hasSelections?: boolean }>(({ theme, hasSelections }) => ({
+const CategoryCard = styled(Paper)<{ $hasSelections?: boolean }>(({ theme, $hasSelections }) => ({
   borderRadius: 8,
   borderLeft: `4px solid`,
   boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
@@ -22,7 +23,7 @@ const CategoryCard = styled(Paper)<{ hasSelections?: boolean }>(({ theme, hasSel
     boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
     transform: 'translateY(-1px)',
   },
-  ...(hasSelections && {
+  ...($hasSelections && {
     borderLeftWidth: 6,
     background: 'linear-gradient(135deg, rgba(74, 36, 109, 0.02) 0%, rgba(229, 53, 138, 0.02) 100%)',
   }),
@@ -61,16 +62,16 @@ const CategoryControls = styled(Box)(({ theme }) => ({
   gap: '0.75rem',
 }));
 
-const SelectAllButton = styled(Button)<{ outlined?: boolean }>(({ theme, outlined }) => ({
-  background: outlined ? 'white' : '#e5358a',
-  color: outlined ? '#e5358a' : 'white',
-  border: outlined ? '1px solid #e5358a' : 'none',
+const SelectAllButton = styled(Button)<{ $outlined?: boolean }>(({ theme, $outlined }) => ({
+  background: $outlined ? 'white' : '#e5358a',
+  color: $outlined ? '#e5358a' : 'white',
+  border: $outlined ? '1px solid #e5358a' : 'none',
   padding: '0.5rem 1rem',
   borderRadius: 4,
   fontSize: '0.875rem',
   textTransform: 'none',
   '&:hover': {
-    background: outlined ? '#fdf2f8' : '#d02b7a',
+    background: $outlined ? '#fdf2f8' : '#d02b7a',
   },
 }));
 
@@ -189,49 +190,44 @@ const CampaignSummary = styled(Box)(({ theme }) => ({
   textAlign: 'center',
 }));
 
-const careGapCategories = [
-  {
-    id: 'preventive',
-    label: 'Preventive Care Screenings',
-    color: '#2e7d32',
-    options: ['Annual Wellness Visit', 'Diabetes Eye Care Exams', 'Hearing', 'Dental'],
-  },
-  {
-    id: 'cancer',
-    label: 'Cancer Screenings',
-    color: '#ed6c02',
-    options: ['Colorectal', 'Breast'],
-  },
-  {
-    id: 'vaccinations',
-    label: 'Vaccinations',
-    color: '#1976d2',
-    options: ['Flu', 'Pneumococcal', 'Covid'],
-  },
-  {
-    id: 'disease-mgmt',
-    label: 'Care and Disease Management',
-    color: '#7b1fa2',
-    options: ['Follow-up ED Visits', 'Follow-up after Hospitalizations', 'Controlling BP', 'Hemoglobin A1c Control', 'All-cause Re-admissions'],
-  },
-  {
-    id: 'fall-risk',
-    label: 'Fall Risk',
-    color: '#c62828',
-    options: ['Baseline Risk Score', 'Fall Risk Reduction check-in calls'],
-  },
-  {
-    id: 'additional',
-    label: 'Additional Support',
-    color: '#795548',
-    options: ['Loneliness Support Calls', 'Medicare Re-enrollments', 'Food Insecurity'],
-  },
-];
+const categoryStyles: { [key: string]: string } = {
+  'Preventive Care Screenings': '#2e7d32',
+  'Cancer Screenings': '#ed6c02',
+  'Vaccinations': '#1976d2',
+  'Care and Disease Management': '#7b1fa2',
+  'Fall Risk': '#c62828',
+  'Additional Support': '#795548',
+  'Other': '#546e7a', // Default color
+};
 
 const CareGaps: React.FC = () => {
   const { state, dispatch } = useCampaignContext();
-  const { careGaps: selected } = state;
+  const { careGaps: selected, masterCareGapList, availableCareGapFlags, selectedAudienceFile } = state;
 
+  // Memoize the filtering and grouping logic to avoid re-computation on every render
+  const displayableCareGapsByCategory = useMemo(() => {
+    if (!masterCareGapList || !availableCareGapFlags) {
+      return {};
+    }
+
+    const displayableCareGaps = masterCareGapList.filter((masterGap: CareGap) =>
+      availableCareGapFlags.includes(masterGap.csvImportFlagName)
+    );
+    
+    // Group by category
+    return displayableCareGaps.reduce((acc: { [key: string]: CareGap[] }, gap: CareGap) => {
+      const category = gap.careGapCategory;
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(gap);
+      return acc;
+    }, {});
+
+  }, [masterCareGapList, availableCareGapFlags]);
+  
+  const displayableCategories = Object.keys(displayableCareGapsByCategory);
+  
   const updateCareGaps = (newCareGaps: typeof selected) => {
     dispatch({ type: 'UPDATE_FIELD', payload: { field: 'careGaps', value: newCareGaps } });
   };
@@ -281,13 +277,46 @@ const CareGaps: React.FC = () => {
   const totalSelected = getTotalSelectedCount();
   const totalCategories = Object.keys(selected).length;
 
+  // Show message if no file is selected
+  if (!selectedAudienceFile) {
+    return (
+      <Box>
+        <Typography variant="h5" component="h2" gutterBottom sx={{ fontWeight: 700, color: '#4a246d' }}>
+          Configure Care Gap Interventions
+        </Typography>
+        <Alert severity="info" sx={{ mt: 2 }}>
+          <Typography variant="body1">
+            Please select a Target Audience file in Step 1 to view the available Care Gaps for this campaign.
+          </Typography>
+        </Alert>
+      </Box>
+    );
+  }
+
+  // Show message if no care gaps are available
+  if (availableCareGapFlags.length > 0 && displayableCategories.length === 0) {
+    return (
+      <Box>
+        <Typography variant="h5" component="h2" gutterBottom sx={{ fontWeight: 700, color: '#4a246d' }}>
+          Configure Care Gap Interventions
+        </Typography>
+        <Alert severity="warning" sx={{ mt: 2 }}>
+          <Typography variant="body1">
+            The selected file "{selectedAudienceFile}" does not contain any recognized care gap data. 
+            Please check the file's column headers for fields ending in `_import_flag`.
+          </Typography>
+        </Alert>
+      </Box>
+    );
+  }
+
   return (
     <Box>
       <Typography variant="h5" component="h2" gutterBottom sx={{ fontWeight: 700, color: '#4a246d' }}>
         Configure Care Gap Interventions
       </Typography>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-        Select the care gaps you want to address in this campaign. Each category can be expanded to view all available options.
+        Select the care gaps you want to address in this campaign. Only care gaps available in "{selectedAudienceFile}" are shown.
       </Typography>
 
       <SelectionSummary>
@@ -304,31 +333,33 @@ const CareGaps: React.FC = () => {
       </SelectionSummary>
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }, gap: 1.5 }}>
-        {careGapCategories.map((category) => {
-          const selectedInCategory = selected[category.label] || [];
+        {displayableCategories.map((categoryName) => {
+          const careGapsInBuffer = displayableCareGapsByCategory[categoryName];
+          const optionNames = careGapsInBuffer.map((gap: CareGap) => gap.careGapName);
+          const selectedInCategory = selected[categoryName] || [];
           const hasSelections = selectedInCategory.length > 0;
-          const allSelected = selectedInCategory.length === category.options.length;
-
+          const allSelected = selectedInCategory.length === optionNames.length;
+          
           return (
             <CategoryCard 
-              key={category.id}
-              hasSelections={hasSelections}
-              sx={{ borderLeftColor: category.color }}
+              key={categoryName}
+              $hasSelections={hasSelections}
+              sx={{ borderLeftColor: categoryStyles[categoryName] || categoryStyles['Other'] }}
             >
               <CategoryHeader>
                 <CategoryTitleRow>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                    <CategoryTitle>{category.label}</CategoryTitle>
+                    <CategoryTitle>{categoryName}</CategoryTitle>
                     {hasSelections && (
                       <CategoryBadge>
-                        {selectedInCategory.length}/{category.options.length}
+                        {selectedInCategory.length}/{optionNames.length}
                       </CategoryBadge>
                     )}
                   </Box>
                   <CategoryControls>
                     <SelectAllButton
-                      outlined={!allSelected}
-                      onClick={() => handleSelectAll(category.label, category.options)}
+                      $outlined={!allSelected}
+                      onClick={() => handleSelectAll(categoryName, optionNames)}
                       size="small"
                     >
                       {allSelected ? 'Deselect All' : 'Select All'}
@@ -342,7 +373,7 @@ const CareGaps: React.FC = () => {
                       <StyledChip
                         key={option}
                         label={option}
-                        onDelete={() => handleOptionToggle(category.label, option)}
+                        onDelete={() => handleOptionToggle(categoryName, option)}
                         size="small"
                       />
                     ))}
@@ -352,17 +383,17 @@ const CareGaps: React.FC = () => {
 
               <CategoryOptions>
                 <OptionsGrid>
-                  {category.options.map((option) => {
-                    const isSelected = selectedInCategory.includes(option);
+                  {careGapsInBuffer.map((gap) => {
+                    const isSelected = selectedInCategory.includes(gap.careGapName);
                     return (
                       <OptionItem
-                        key={option}
+                        key={gap.careGapId}
                         selected={isSelected}
-                        onClick={() => handleOptionToggle(category.label, option)}
+                        onClick={() => handleOptionToggle(categoryName, gap.careGapName)}
                       >
                         <OptionCheckbox checked={isSelected} />
                         <OptionLabel selected={isSelected}>
-                          {option}
+                          {gap.careGapName}
                         </OptionLabel>
                       </OptionItem>
                     );

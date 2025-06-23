@@ -132,4 +132,75 @@ public class AudiencesController : ControllerBase
             return StatusCode(500, "An error occurred while communicating with storage.");
         }
     }
+
+    /// <summary>
+    /// GET /api/audiences/file-headers?fileName=...&streamType=...
+    /// Analyzes CSV headers to find care gap columns and returns available care gaps
+    /// </summary>
+    [HttpGet("file-headers")]
+    public async Task<IActionResult> GetFileHeaders([FromQuery] string fileName, [FromQuery] string streamType)
+    {
+        if (string.IsNullOrEmpty(fileName))
+        {
+            return BadRequest("A file name is required.");
+        }
+        if (string.IsNullOrEmpty(streamType))
+        {
+            return BadRequest("A stream type is required.");
+        }
+
+        try
+        {
+            var containerName = GetContainerName(streamType);
+            var blobContainerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+            var blobClient = blobContainerClient.GetBlobClient($"landing/{fileName}");
+
+            if (!await blobClient.ExistsAsync())
+            {
+                return NotFound($"The specified file '{fileName}' was not found.");
+            }
+
+            using var stream = new MemoryStream();
+            await blobClient.DownloadToAsync(stream);
+            stream.Position = 0;
+
+            using var reader = new StreamReader(stream);
+            var headerLine = await reader.ReadLineAsync();
+            
+            if (string.IsNullOrEmpty(headerLine))
+            {
+                return Ok(new List<string>());
+            }
+
+            var headers = headerLine.Split(',');
+            var careGapFlags = headers
+                .Select(h => h.Trim().Trim('"'))
+                .Where(h => h.EndsWith("_import_flag"))
+                .ToList();
+
+            return Ok(careGapFlags);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch
+        {
+            return StatusCode(500, "An error occurred while analyzing file headers.");
+        }
+    }
+
+    private string ConvertToDisplayName(string baseName)
+    {
+        // This logic is now deprecated and will be removed.
+        // The mapping is handled by the frontend joining against the master care gap list.
+        return baseName;
+    }
+
+    private string GetCareGapCategory(string displayName)
+    {
+        // This logic is now deprecated and will be removed.
+        // The mapping is handled by the frontend joining against the master care gap list.
+        return "Unknown";
+    }
 } 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Stepper, Step, StepLabel, ThemeProvider, Box, Button, Paper } from '@mui/material';
 import CampaignInfo from './CampaignInfo';
 import CareGaps from './CareGaps';
@@ -8,7 +8,33 @@ import { CampaignProvider, useCampaignContext } from './contexts/CampaignContext
 
 const AppContent: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
-  const { state } = useCampaignContext();
+  const { state, dispatch } = useCampaignContext();
+
+  // On initial app load, fetch the master list of all care gaps
+  useEffect(() => {
+    const fetchMasterCareGaps = async () => {
+      try {
+        console.log('Attempting to fetch master care gap list from /api/care-gaps...');
+        const response = await fetch('/api/care-gaps');
+        console.log('Response received from /api/care-gaps:', response);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Failed to fetch master care gap list. Status: ${response.status}. Body: ${errorText}`);
+          throw new Error(`Failed to fetch master care gap list from the server. Status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Successfully fetched and parsed master care gap list:', data);
+        dispatch({ type: 'UPDATE_FIELD', payload: { field: 'masterCareGapList', value: data } });
+      } catch (error) {
+        console.error("Error fetching master care gaps:", error);
+        // Optionally, dispatch an action to show an error banner
+      }
+    };
+
+    fetchMasterCareGaps();
+  }, [dispatch]);
 
   const handleNext = () => {
     if (activeStep === 0) {

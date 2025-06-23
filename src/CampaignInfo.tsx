@@ -24,6 +24,8 @@ const CampaignInfo: React.FC<CampaignInfoProps> = ({ onNext }) => {
     handleFieldChange('careFlowStream', newStream);
     setStreamError(false);
     handleFieldChange('selectedAudienceFile', null);
+    handleFieldChange('careGaps', {});
+    handleFieldChange('availableCareGapFlags', []);
   };
   
   return (

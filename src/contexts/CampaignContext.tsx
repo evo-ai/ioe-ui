@@ -1,5 +1,14 @@
 import React, { createContext, useReducer, useContext, Dispatch, ReactNode } from 'react';
 
+// Define the shape of a single care gap, matching the backend API response
+export interface CareGap {
+  careGapId: number;
+  careGapName: string;
+  careGapCategory: string;
+  careGapAbbreviation: string;
+  csvImportFlagName: string;
+}
+
 // 1. Define the shape of our campaign state
 interface CampaignState {
   careFlowStream: string;
@@ -8,6 +17,8 @@ interface CampaignState {
   description: string;
   selectedAudienceFile: string | null;
   careGaps: { [category: string]: string[] };
+  masterCareGapList: CareGap[];
+  availableCareGapFlags: string[];
 }
 
 // 2. Define the actions that can modify the state
@@ -24,6 +35,8 @@ const initialState: CampaignState = {
   description: '',
   selectedAudienceFile: null,
   careGaps: {},
+  masterCareGapList: [],
+  availableCareGapFlags: [],
 };
 
 // 4. Create the reducer function to handle state updates

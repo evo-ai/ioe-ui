@@ -20,6 +20,8 @@ interface FileMetadata {
 interface ValidationSummary {
   membersFound: number;
   hasMandatoryHeaders: boolean;
+  availableCareGapFlags: string[];
+  totalColumns: number;
 }
 
 const AudienceSelector: React.FC = () => {
@@ -39,6 +41,7 @@ const AudienceSelector: React.FC = () => {
       setPreviewData([]);
       setValidationSummary(null);
       dispatch({ type: 'UPDATE_FIELD', payload: { field: 'partnerName', value: null } });
+      dispatch({ type: 'UPDATE_FIELD', payload: { field: 'availableCareGapFlags', value: [] } });
       return;
     }
 
@@ -48,24 +51,39 @@ const AudienceSelector: React.FC = () => {
     setPage(0);
 
     try {
-      const response = await fetch(`/api/audiences/file-preview?fileName=${encodeURIComponent(fileName)}&streamType=${encodeURIComponent(careFlowStream)}`);
-      if (!response.ok) {
-        throw new Error(await response.text() || `Failed to fetch preview for ${fileName}.`);
+      // Fetch file preview data
+      const previewResponse = await fetch(`/api/audiences/file-preview?fileName=${encodeURIComponent(fileName)}&streamType=${encodeURIComponent(careFlowStream)}`);
+      if (!previewResponse.ok) {
+        throw new Error(await previewResponse.text() || `Failed to fetch preview for ${fileName}.`);
       }
-      const data: DataRecord[] = await response.json();
+      const data: DataRecord[] = await previewResponse.json();
       setPreviewData(data);
+
+      // Fetch care gap headers
+      const headersResponse = await fetch(`/api/audiences/file-headers?fileName=${encodeURIComponent(fileName)}&streamType=${encodeURIComponent(careFlowStream)}`);
+      if (!headersResponse.ok) {
+        throw new Error(await headersResponse.text() || `Failed to fetch headers for ${fileName}.`);
+      }
+      const availableFlags: string[] = await headersResponse.json();
+      
+      // Update available care gap flags in context
+      dispatch({ type: 'UPDATE_FIELD', payload: { field: 'availableCareGapFlags', value: availableFlags } });
 
       if (data.length > 0) {
         dispatch({ type: 'UPDATE_FIELD', payload: { field: 'partnerName', value: data[0].partner_name || null } });
         const headers = Object.keys(data[0]);
+        
         setValidationSummary({
           membersFound: data.length,
           hasMandatoryHeaders: headers.some(header => header.startsWith('salesforce_account_number')),
+          availableCareGapFlags: availableFlags,
+          totalColumns: headers.length,
         });
       }
     } catch (err: any) {
       setError(err.message);
       setPreviewData([]); // Clear data on error
+      dispatch({ type: 'UPDATE_FIELD', payload: { field: 'availableCareGapFlags', value: [] } });
     } finally {
       setIsLoading(false);
     }
@@ -100,6 +118,11 @@ const AudienceSelector: React.FC = () => {
   const handleFileSelectChange = (event: SelectChangeEvent<string>) => {
     const fileName = event.target.value as string;
     dispatch({ type: 'UPDATE_FIELD', payload: { field: 'selectedAudienceFile', value: fileName || null } });
+    
+    // Clear existing care gap selections when a new file is selected
+    if (fileName) {
+      dispatch({ type: 'UPDATE_FIELD', payload: { field: 'careGaps', value: {} } });
+    }
   };
   
   const handleChangePage = (event: unknown, newPage: number) => setPage(newPage);
@@ -191,13 +214,19 @@ const AudienceSelector: React.FC = () => {
                 <CheckCircleIcon color="success" sx={{ mr: 1 }} />
                 <Typography variant="body2">{validationSummary.membersFound.toLocaleString()} Members Found</Typography>
               </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                 {validationSummary.hasMandatoryHeaders ? 
                   <CheckCircleIcon color="success" sx={{ mr: 1 }} /> : 
                   <WarningIcon color="warning" sx={{ mr: 1 }} />
                 }
                 <Typography variant="body2">
                   {validationSummary.hasMandatoryHeaders ? 'Mandatory Headers Found' : 'Mandatory Headers Missing'}
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <CheckCircleIcon color="info" sx={{ mr: 1 }} />
+                <Typography variant="body2">
+                  {validationSummary.availableCareGapFlags.length} Care Gap{validationSummary.availableCareGapFlags.length !== 1 ? 's' : ''} Available
                 </Typography>
               </Box>
             </Paper>
