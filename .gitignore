@@ -7,6 +7,7 @@
 
 # testing
 /coverage
+test-output.json
 
 # production
 /build
@@ -31,3 +32,138 @@ build/
 ioe-api/bin/
 ioe-api/obj/
 ioe-api/appsettings.json
+*.dll
+*.pdb
+*.exe
+*.deps.json
+*.runtimeconfig.json
+*.genruntimeconfig.cache
+*.AssemblyReference.cache
+*.CoreCompileInputs.cache
+*.FileListAbsolute.txt
+*.Up2Date
+*.assets.cache
+*.MvcApplicationPartsAssemblyInfo.cs
+*.AssemblyInfoInputs.cache
+*.GeneratedMSBuildEditorConfig.editorconfig
+*.GlobalUsings.g.cs
+*.MvcApplicationPartsAssemblyInfo.cache
+*.AssemblyInfo.cs
+*.NETCoreApp,Version=v8.0.AssemblyAttributes.cs
+*.sourcelink.json
+*.csproj.nuget.g.props
+*.csproj.nuget.g.targets
+*.csproj.nuget.dgspec.json
+project.nuget.cache
+project.assets.json
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# IDE/Editor
+.cursor/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+npm
+start
+
+# OS files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Logs
+*.log
+logs/
+lerna-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Dependency directories
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# Next.js build output
+.next
+out
+
+# Nuxt.js build / generate output
+.nuxt
+dist
+
+# Gatsby files
+public
+
+# Storybook build outputs
+.out
+.storybook-out
+
+# Temporary folders
+tmp/
+temp/
+
+# Editor directories and files
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Local environment files
+.env*.local
+
+# Vercel
+.vercel
+
+# TypeScript cache
+*.tsbuildinfo
