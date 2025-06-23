@@ -1,6 +1,9 @@
 # IOE-UI and Backend API
 
-This project contains a React frontend (`ioe-ui`) and an ASP.NET Core backend (`ioe-api`) that work together to create healthcare campaigns. It features a database-driven configuration for care gaps and secure file browsing from Azure Blob Storage.
+This project contains a React frontend (`ioe-ui`) and an ASP.NET Core backend (`ioe-api`) that work together to securely browse and preview files from an Azure Blob Storage container.
+## Architecture Overview
+
+The React frontend communicates with the ASP.NET Core API which retrieves files from an Azure Blob Storage container. The API exposes a small set of endpoints used by the UI to list available files and preview their contents.
 
 ## 🏗️ Project Overview
 
