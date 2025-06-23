@@ -10,10 +10,11 @@
 using System;
 using System.Reflection;
 
+[assembly: Microsoft.Extensions.Configuration.UserSecrets.UserSecretsIdAttribute("a2f97bd4-7abb-44f1-8bfe-d695f14c5da0")]
 [assembly: System.Reflection.AssemblyCompanyAttribute("ioe-api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e0a63c4eb4f14decae0e04d6613ba3299eed15b4")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+70c57e11b44961e9be61aa500132b10465c25063")]
 [assembly: System.Reflection.AssemblyProductAttribute("ioe-api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ioe-api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

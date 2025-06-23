@@ -1,125 +1,250 @@
-import React, { useState, useEffect } from 'react';
-import { Select, MenuItem, FormControl, InputLabel, CircularProgress, Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, SelectChangeEvent } from '@mui/material';
+import React, { useState, useEffect, useCallback } from 'react';
+import { 
+  Select, MenuItem, FormControl, InputLabel, CircularProgress, Box, 
+  Typography, Table, TableBody, TableCell, TableContainer, TableHead, 
+  TableRow, Paper, SelectChangeEvent, Skeleton, TablePagination 
+} from '@mui/material';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import WarningIcon from '@mui/icons-material/Warning';
+import { useCampaignContext } from './contexts/CampaignContext';
 
 // Using `any` is simple for dynamic data, but for production, you might define a more specific type.
-type DataRecord = any;
+type DataRecord = Record<string, any>;
 
-interface AudienceSelectorProps {
-  onFileSelect: (fileName: string | null) => void;
+interface FileMetadata {
+  fileName: string;
+  sizeInBytes: number;
+  dateModified: string;
 }
 
-const AudienceSelector: React.FC<AudienceSelectorProps> = ({ onFileSelect }) => {
-  const [fileList, setFileList] = useState<string[]>([]);
-  const [selectedFile, setSelectedFile] = useState<string>('');
+interface ValidationSummary {
+  membersFound: number;
+  hasMandatoryHeaders: boolean;
+  availableCareGapFlags: string[];
+  totalColumns: number;
+}
+
+const AudienceSelector: React.FC = () => {
+  const { state, dispatch } = useCampaignContext();
+  const { careFlowStream, selectedAudienceFile } = state;
+
+  const [fileList, setFileList] = useState<FileMetadata[]>([]);
   const [previewData, setPreviewData] = useState<DataRecord[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [validationSummary, setValidationSummary] = useState<ValidationSummary | null>(null);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
 
-  // 1. Fetch the list of files from our backend API when the component first loads.
-  useEffect(() => {
-    const fetchFileList = async () => {
-      setError(null);
-      try {
-        const response = await fetch('/api/audiences/available-files');
-        if (!response.ok) {
-          throw new Error('Failed to fetch file list from server.');
-        }
-        const data: string[] = await response.json();
-        setFileList(data);
-      } catch (err: any) {
-        setError(err.message);
-      }
-    };
-
-    fetchFileList();
-  }, []); // The empty array [] means this effect runs only once.
-
-  // 2. Handle the user selecting a file from the dropdown.
-  const handleFileSelectChange = async (event: SelectChangeEvent<string>) => {
-    const fileName = event.target.value as string;
-    setSelectedFile(fileName);
-    onFileSelect(fileName || null); // Notify parent component
-    setPreviewData([]); // Clear any previous preview
-
-    if (!fileName) {
-      return; // Stop if the user selected the "-- Please choose --" option
+  const fetchAndProcessFile = useCallback(async (fileName: string | null) => {
+    if (!careFlowStream || !fileName) {
+      setPreviewData([]);
+      setValidationSummary(null);
+      dispatch({ type: 'UPDATE_FIELD', payload: { field: 'partnerName', value: null } });
+      dispatch({ type: 'UPDATE_FIELD', payload: { field: 'availableCareGapFlags', value: [] } });
+      return;
     }
 
     setIsLoading(true);
     setError(null);
+    setValidationSummary(null);
+    setPage(0);
+
     try {
-      // 3. Fetch the preview content for the selected file from our backend API.
-      const response = await fetch(`/api/audiences/file-preview?fileName=${encodeURIComponent(fileName)}`);
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || `Failed to fetch preview for ${fileName}.`);
+      // Fetch file preview data
+      const previewResponse = await fetch(`/api/audiences/file-preview?fileName=${encodeURIComponent(fileName)}&streamType=${encodeURIComponent(careFlowStream)}`);
+      if (!previewResponse.ok) {
+        throw new Error(await previewResponse.text() || `Failed to fetch preview for ${fileName}.`);
       }
-      const data: DataRecord[] = await response.json();
+      const data: DataRecord[] = await previewResponse.json();
       setPreviewData(data);
+
+      // Fetch care gap headers
+      const headersResponse = await fetch(`/api/audiences/file-headers?fileName=${encodeURIComponent(fileName)}&streamType=${encodeURIComponent(careFlowStream)}`);
+      if (!headersResponse.ok) {
+        throw new Error(await headersResponse.text() || `Failed to fetch headers for ${fileName}.`);
+      }
+      const availableFlags: string[] = await headersResponse.json();
+      
+      // Update available care gap flags in context
+      dispatch({ type: 'UPDATE_FIELD', payload: { field: 'availableCareGapFlags', value: availableFlags } });
+
+      if (data.length > 0) {
+        dispatch({ type: 'UPDATE_FIELD', payload: { field: 'partnerName', value: data[0].partner_name || null } });
+        const headers = Object.keys(data[0]);
+        
+        setValidationSummary({
+          membersFound: data.length,
+          hasMandatoryHeaders: headers.some(header => header.startsWith('salesforce_account_number')),
+          availableCareGapFlags: availableFlags,
+          totalColumns: headers.length,
+        });
+      }
     } catch (err: any) {
       setError(err.message);
+      setPreviewData([]); // Clear data on error
+      dispatch({ type: 'UPDATE_FIELD', payload: { field: 'availableCareGapFlags', value: [] } });
     } finally {
       setIsLoading(false);
     }
+  }, [careFlowStream, dispatch]);
+
+  useEffect(() => {
+    const fetchFileList = async () => {
+      if (!careFlowStream) {
+        setFileList([]);
+        return;
+      }
+      try {
+        const response = await fetch(`/api/audiences/available-files?streamType=${encodeURIComponent(careFlowStream)}`);
+        if (!response.ok) throw new Error('Failed to fetch file list from server.');
+        setFileList(await response.json());
+      } catch (err: any) {
+        setError(err.message);
+      }
+    };
+    fetchFileList();
+  }, [careFlowStream]);
+
+  useEffect(() => {
+    if (selectedAudienceFile) {
+      fetchAndProcessFile(selectedAudienceFile);
+    } else {
+      setPreviewData([]);
+      setValidationSummary(null);
+    }
+  }, [selectedAudienceFile, fetchAndProcessFile]);
+  
+  const handleFileSelectChange = (event: SelectChangeEvent<string>) => {
+    const fileName = event.target.value as string;
+    dispatch({ type: 'UPDATE_FIELD', payload: { field: 'selectedAudienceFile', value: fileName || null } });
+    
+    // Clear existing care gap selections when a new file is selected
+    if (fileName) {
+      dispatch({ type: 'UPDATE_FIELD', payload: { field: 'careGaps', value: {} } });
+    }
   };
   
+  const handleChangePage = (event: unknown, newPage: number) => setPage(newPage);
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const paginatedData = previewData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString(undefined, {
+      year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+  };
+
   // A sub-component to render the data table nicely with Material-UI
   const PreviewTable = ({ data }: { data: DataRecord[] }) => {
     if (data.length === 0) return null;
     const headers = Object.keys(data[0]);
 
     return (
-      <TableContainer component={Paper} sx={{ maxHeight: 440, mt: 2 }}>
-        <Table stickyHeader aria-label="preview table">
-          <TableHead>
-            <TableRow>
-              {headers.map(header => <TableCell key={header}><b>{header}</b></TableCell>)}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {data.map((row, index) => (
-              <TableRow key={index}>
-                {headers.map(header => <TableCell key={header}>{row[header]}</TableCell>)}
+      <>
+        <TableContainer component={Paper} sx={{ maxHeight: 500, mt: 2 }}>
+          <Table stickyHeader aria-label="preview table">
+            <TableHead>
+              <TableRow>
+                {headers.map(header => <TableCell key={header}><b>{header}</b></TableCell>)}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </TableHead>
+            <TableBody>
+              {data.map((row, index) => (
+                <TableRow key={index}>
+                  {headers.map(header => <TableCell key={header}>{row[header]}</TableCell>)}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 25, 50]}
+          component="div"
+          count={previewData.length}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+        />
+      </>
     );
   };
 
   return (
     <Box>
-      <Typography variant="subtitle2" gutterBottom>
-        Target Audience (Select From Landing Zone)
-      </Typography>
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
-        Choose a pre-ingested CSV file from the secure landing zone. The file contents will be shown below.
-      </Typography>
-
-      <FormControl fullWidth>
-        <InputLabel id="file-select-label">Available Files</InputLabel>
-        <Select
-          labelId="file-select-label"
-          id="file-select"
-          value={selectedFile}
-          label="Available Files"
-          onChange={handleFileSelectChange}
-        >
-          <MenuItem value=""><em>-- Please choose a file --</em></MenuItem>
-          {fileList.map(file => (
-            <MenuItem key={file} value={file}>{file}</MenuItem>
-          ))}
-        </Select>
-      </FormControl>
-
-      {isLoading && <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}><CircularProgress /></Box>}
+      <Box sx={{ display: 'flex', gap: 4, flexDirection: { xs: 'column', md: 'row' } }}>
+        <Box sx={{ flex: 1 }}>
+          <Typography variant="subtitle2" gutterBottom>
+            Target Audience File
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+            Choose a pre-ingested CSV file. A validation summary and preview will appear.
+          </Typography>
+          <FormControl fullWidth disabled={!careFlowStream}>
+            <InputLabel id="file-select-label">Available Files</InputLabel>
+            <Select
+              labelId="file-select-label"
+              id="file-select"
+              value={selectedAudienceFile || ''}
+              label="Available Files"
+              onChange={handleFileSelectChange}
+            >
+              <MenuItem value=""><em>-- Please choose a file --</em></MenuItem>
+              {fileList.map(file => (
+                <MenuItem key={file.fileName} value={file.fileName}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                    <Typography variant="body2">{file.fileName}</Typography>
+                    <Typography variant="caption" color="text.secondary">{formatDate(file.dateModified)}</Typography>
+                  </Box>
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+        <Box sx={{ flex: 1 }}>
+          {validationSummary && (
+            <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
+              <Typography variant="subtitle2" gutterBottom>Validation Summary</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <CheckCircleIcon color="success" sx={{ mr: 1 }} />
+                <Typography variant="body2">{validationSummary.membersFound.toLocaleString()} Members Found</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                {validationSummary.hasMandatoryHeaders ? 
+                  <CheckCircleIcon color="success" sx={{ mr: 1 }} /> : 
+                  <WarningIcon color="warning" sx={{ mr: 1 }} />
+                }
+                <Typography variant="body2">
+                  {validationSummary.hasMandatoryHeaders ? 'Mandatory Headers Found' : 'Mandatory Headers Missing'}
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <CheckCircleIcon color="info" sx={{ mr: 1 }} />
+                <Typography variant="body2">
+                  {validationSummary.availableCareGapFlags.length} Care Gap{validationSummary.availableCareGapFlags.length !== 1 ? 's' : ''} Available
+                </Typography>
+              </Box>
+            </Paper>
+          )}
+        </Box>
+      </Box>
+      
       {error && <Typography color="error" sx={{ mt: 2 }}>Error: {error}</Typography>}
       
-      {previewData.length > 0 && (
+      {isLoading ? (
         <Box sx={{ mt: 2 }}>
-          <Typography variant="h6" gutterBottom>File Preview: {selectedFile}</Typography>
-          <PreviewTable data={previewData} />
+          <Skeleton variant="rectangular" height={40} sx={{ mb: 1 }} />
+          <Skeleton variant="rectangular" height={200} />
+        </Box>
+      ) : paginatedData.length > 0 && (
+        <Box sx={{ mt: 4 }}>
+          <Typography variant="h6" gutterBottom>File Preview: {selectedAudienceFile}</Typography>
+          <PreviewTable data={paginatedData} />
         </Box>
       )}
     </Box>
