@@ -51,8 +51,8 @@ const CampaignInfo: React.FC<CampaignInfoProps> = ({ onNext }) => {
             <MenuItem value="">
               <em>-- Please choose a stream --</em>
             </MenuItem>
-            <MenuItem value="Healthcare Partner">Healthcare Partner</MenuItem>
-            <MenuItem value="Direct-to-Consumer (DTC)">Direct-to-Consumer (DTC)</MenuItem>
+            <MenuItem value="HealthcarePartner">Healthcare Partner</MenuItem>
+            <MenuItem value="DTC">Direct-to-Consumer (DTC)</MenuItem>
           </Select>
           {streamError && <FormHelperText>Care-flow Stream is required</FormHelperText>}
         </FormControl>
