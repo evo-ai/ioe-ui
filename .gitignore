@@ -71,6 +71,7 @@ pip-delete-this-directory.txt
 # IDE/Editor
 .cursor/
 .vscode/
+.vs/
 .idea/
 *.swp
 *.swo
@@ -167,3 +168,9 @@ temp/
 
 # TypeScript cache
 *.tsbuildinfo
+
+# User-specific files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates

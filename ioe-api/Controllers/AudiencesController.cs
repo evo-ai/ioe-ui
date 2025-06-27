@@ -1,43 +1,16 @@
+using ioe_api.Infrastructure.BlobStorage;
+using ioe_api.Services.Audience;
 using Microsoft.AspNetCore.Mvc;
-using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
-using CsvHelper;
-using System.Globalization;
-using System.IO;
-using System.Threading.Tasks;
-using System.Collections.Generic;
-using System.Linq;
-using System;
 
 [ApiController]
 [Route("api/[controller]")]
 public class AudiencesController : ControllerBase
 {
-    private readonly BlobServiceClient _blobServiceClient;
-    private readonly IConfiguration _configuration;
+    private readonly IAudienceService _audienceService;
 
-    public AudiencesController(IConfiguration configuration)
+    public AudiencesController(IAudienceService audienceService)
     {
-        _configuration = configuration;
-        var connectionString = _configuration.GetConnectionString("StorageAccount");
-        _blobServiceClient = new BlobServiceClient(connectionString);
-    }
-
-    private string GetContainerName(string streamType)
-    {
-        return streamType switch
-        {
-            "Healthcare Partner" => "fs-partner",
-            "Direct-to-Consumer (DTC)" => "fs-dtc",
-            _ => throw new ArgumentException("Invalid stream type specified.", nameof(streamType))
-        };
-    }
-
-    public class FileMetadata
-    {
-        public string FileName { get; set; }
-        public long SizeInBytes { get; set; }
-        public DateTimeOffset DateModified { get; set; }
+        _audienceService = audienceService;
     }
 
     /// <summary>
@@ -46,43 +19,21 @@ public class AudiencesController : ControllerBase
     [HttpGet("available-files")]
     public async Task<IActionResult> GetAvailableFiles([FromQuery] string streamType)
     {
-        if (string.IsNullOrEmpty(streamType))
-        {
+        if (string.IsNullOrWhiteSpace(streamType))
             return BadRequest("A stream type is required.");
-        }
 
         try
         {
-            var containerName = GetContainerName(streamType);
-            var blobContainerClient = _blobServiceClient.GetBlobContainerClient(containerName);
-            var fileList = new List<FileMetadata>();
-
-            await foreach (BlobItem blobItem in blobContainerClient.GetBlobsAsync(traits: BlobTraits.Metadata, prefix: "landing/"))
-            {
-                if (blobItem.Properties.ContentLength > 0)
-                {
-                    fileList.Add(new FileMetadata
-                    {
-                        FileName = Path.GetFileName(blobItem.Name),
-                        SizeInBytes = blobItem.Properties.ContentLength ?? 0,
-                        DateModified = blobItem.Properties.LastModified ?? DateTimeOffset.MinValue
-                    });
-                }
-            }
-            return Ok(fileList.OrderByDescending(f => f.DateModified));
+            var files = await _audienceService.GetAvailableFilesAsync(streamType);
+            return Ok(files);
         }
         catch (ArgumentException ex)
         {
             return BadRequest(ex.Message);
         }
-        catch (Azure.RequestFailedException)
+        catch (BlobStorageAccessException ex)
         {
-            // This can happen if the container doesn't exist, etc.
-            return Ok(new List<FileMetadata>()); // Return empty list gracefully
-        }
-        catch
-        {
-            return StatusCode(500, "An error occurred while communicating with storage.");
+            return StatusCode(500, ex.Message);
         }
     }
 
@@ -92,44 +43,24 @@ public class AudiencesController : ControllerBase
     [HttpGet("file-preview")]
     public async Task<IActionResult> GetFilePreview([FromQuery] string fileName, [FromQuery] string streamType)
     {
-        if (string.IsNullOrEmpty(fileName))
-        {
+        if (string.IsNullOrWhiteSpace(fileName))
             return BadRequest("A file name is required.");
-        }
-        if (string.IsNullOrEmpty(streamType))
-        {
+
+        if (string.IsNullOrWhiteSpace(streamType))
             return BadRequest("A stream type is required.");
-        }
 
         try
         {
-            var containerName = GetContainerName(streamType);
-            var blobContainerClient = _blobServiceClient.GetBlobContainerClient(containerName);
-            var blobClient = blobContainerClient.GetBlobClient($"landing/{fileName}");
-
-            if (!await blobClient.ExistsAsync())
-            {
-                return NotFound($"The specified file '{fileName}' was not found.");
-            }
-
-            using var stream = new MemoryStream();
-            await blobClient.DownloadToAsync(stream);
-            stream.Position = 0;
-
-            using var reader = new StreamReader(stream);
-            using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
-
-            var records = csv.GetRecords<dynamic>().ToList();
-
+            var records = await _audienceService.GetFilePreviewAsync(streamType, fileName);
             return Ok(records);
         }
-        catch (ArgumentException ex)
+        catch (FileNotFoundException ex)
         {
-            return BadRequest(ex.Message);
+            return NotFound(ex.Message);
         }
-        catch
+        catch (BlobStorageAccessException ex)
         {
-            return StatusCode(500, "An error occurred while communicating with storage.");
+            return StatusCode(500, ex.Message);
         }
     }
 
@@ -140,67 +71,24 @@ public class AudiencesController : ControllerBase
     [HttpGet("file-headers")]
     public async Task<IActionResult> GetFileHeaders([FromQuery] string fileName, [FromQuery] string streamType)
     {
-        if (string.IsNullOrEmpty(fileName))
-        {
+        if (string.IsNullOrWhiteSpace(fileName))
             return BadRequest("A file name is required.");
-        }
-        if (string.IsNullOrEmpty(streamType))
-        {
+
+        if (string.IsNullOrWhiteSpace(streamType))
             return BadRequest("A stream type is required.");
-        }
 
         try
         {
-            var containerName = GetContainerName(streamType);
-            var blobContainerClient = _blobServiceClient.GetBlobContainerClient(containerName);
-            var blobClient = blobContainerClient.GetBlobClient($"landing/{fileName}");
-
-            if (!await blobClient.ExistsAsync())
-            {
-                return NotFound($"The specified file '{fileName}' was not found.");
-            }
-
-            using var stream = new MemoryStream();
-            await blobClient.DownloadToAsync(stream);
-            stream.Position = 0;
-
-            using var reader = new StreamReader(stream);
-            var headerLine = await reader.ReadLineAsync();
-            
-            if (string.IsNullOrEmpty(headerLine))
-            {
-                return Ok(new List<string>());
-            }
-
-            var headers = headerLine.Split(',');
-            var careGapFlags = headers
-                .Select(h => h.Trim().Trim('"'))
-                .Where(h => h.EndsWith("_import_flag"))
-                .ToList();
-
-            return Ok(careGapFlags);
+            var headers = await _audienceService.GetFileHeadersAsync(streamType, fileName);
+            return Ok(headers);
         }
-        catch (ArgumentException ex)
+        catch (FileNotFoundException ex)
         {
-            return BadRequest(ex.Message);
+            return NotFound(ex.Message);
         }
-        catch
+        catch (BlobStorageAccessException ex)
         {
-            return StatusCode(500, "An error occurred while analyzing file headers.");
+            return StatusCode(500, ex.Message);
         }
     }
-
-    private string ConvertToDisplayName(string baseName)
-    {
-        // This logic is now deprecated and will be removed.
-        // The mapping is handled by the frontend joining against the master care gap list.
-        return baseName;
-    }
-
-    private string GetCareGapCategory(string displayName)
-    {
-        // This logic is now deprecated and will be removed.
-        // The mapping is handled by the frontend joining against the master care gap list.
-        return "Unknown";
-    }
-} 
+}
